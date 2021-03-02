@@ -1,6 +1,5 @@
 import telegram
 import telegram.ext as tex
-import logging
 import json
 
 users_file = open('users.json')
