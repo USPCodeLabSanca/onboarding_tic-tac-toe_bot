@@ -19,24 +19,44 @@ def set_nick(update, context):
     my_username = update.effective_user.name
     my_user_id = update.effective_user.id
 
+    if nick_exists(my_nick):
+        update.message.reply_text("Esse nick já existe, por favor digite outro")
+        return "SET_NICK"
+
     user_object = {
         "user_id": my_user_id,
         "username": my_username,
         "nickname": my_nick
     }
 
-    existingUser = search_user_in_queue(my_username)
-
-    if(existingUser != None):
-        update.message.reply_text('Seu nickname foi atualizado!')
-        remove_user_from_queue(my_user_id)
+    for user in users_queue:
+        if my_user_id == user["user_id"]:
+            user["nickname"] = my_nick
+            update_queue_json_file()
+            update.message.reply_text('Nickname modificado com sucesso!')
+            return tex.ConversationHandler.END
 
     users_queue.append(user_object)
     update_queue_json_file()
 
-    text = f'Muito bem, {my_nick}. Digite /play para iniciar uma partida ou aguarde ser chamado por um outro jogador'
+    text = f'Muito bem, {my_nick}. Digite /play para ir para o menu do jogo ou aguarde ser chamado para uma partida'
     update.message.reply_text(text)
     return tex.ConversationHandler.END
+
+
+def change_nick(update, context):
+    if search_user_in_queue(update.effective_user.name) == None:
+        update.message.reply_text("Impossível mudar seu apelido! Você não está cadastrado na fila de espera.")
+        return tex.ConversationHandler.END
+    update.message.reply_text("Digite o novo nickname.")
+    return "SET_NICK"
+
+
+def nick_exists(nickname):
+    for user in users_queue:
+        if(nickname == user["nickname"]):
+            return True
+    return False
 
 
 def invalid_nick(update, context):
@@ -159,42 +179,44 @@ def remove_user(update, context):
 
 
 def random_user(update, context):
-    player1 = search_user_in_queue(update.effective_user.name)
+    player1_id = update.effective_user.id
+    player1_name = update.effective_user.name
     player2 = get_user_from_queue_start(update.effective_user.id)
     text = ''
-    if(player2 == None):
+    if player2 == None:
         text = 'Parece que você está sozinho por aqui. Não há usuários disponíveis. '
         text += 'Compartilhe o bot com os amigos para poder jogar.'
     else:
-        text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}'
-        text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}'
-        context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
+        text1 = f'{player1_name}, você vai jogar com {player2["username"]}'
+        text2 = f'{player2["username"]}, você vai jogar com {player1_name}'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text1)
         context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
         # função do jogo
         text = 'Você jogou com um usuário aleatório. Retorno com sucesso'
         context.bot.sendMessage(chat_id=player2["user_id"], text=text)
-    context.bot.sendMessage(chat_id=player1["user_id"], text=text)
+    context.bot.sendMessage(chat_id=player1_id, text=text)
     return tex.ConversationHandler.END
 
 
 def specific_user(update, context):
-    player1 = search_user_in_queue(update.effective_user.name)
+    player1_id = update.effective_user.id
+    player1_username = update.effective_user.name
     player2 = search_user_in_queue(update.message.text)
-    if(player2 == None):
+    if player2 == None:
         text = 'Não foi encontrado nenhum usuário com esse nome na fila'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
-    elif player2["user_id"] == player1["user_id"]:
+    elif player2["user_id"] == player1_id:
         text = 'Você não pode jogar consigo mesmo!'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
-    # função do jogo
-    text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}'
-    text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}'
-    context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
+    text1 = f'{player1_username}, você vai jogar com {player2["username"]}'
+    text2 = f'{player2["username"]}, você vai jogar com {player1_username}'
+    context.bot.sendMessage(chat_id=player1_id, text=text1)
     context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
+    # função do jogo
     text = 'Você jogou com um usuário específico. Retorno com sucesso'
-    context.bot.sendMessage(chat_id=player1["user_id"], text=text)
+    context.bot.sendMessage(chat_id=player1_id, text=text)
     context.bot.sendMessage(chat_id=player2["user_id"], text=text)
     return tex.ConversationHandler.END
 
@@ -222,11 +244,20 @@ play_handler = tex.ConversationHandler(
     fallbacks=[tex.CommandHandler("play", play_command)]
 )
 
+change_nick_handler = tex.ConversationHandler(
+    entry_points = [tex.CommandHandler("change", change_nick)],
+    states={
+        "SET_NICK": [tex.MessageHandler(tex.Filters.text & ~tex.Filters.command, set_nick)]
+    },
+    fallbacks=[tex.MessageHandler(tex.Filters.all, invalid_nick)]
+)
+
 users_handler = tex.CommandHandler('users', users)
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(play_handler)
 dispatcher.add_handler(users_handler)
+dispatcher.add_handler(change_nick_handler)
 
 updater.start_polling()
 
