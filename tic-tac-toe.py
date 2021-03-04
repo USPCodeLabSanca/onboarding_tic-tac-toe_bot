@@ -6,11 +6,15 @@ class TicTacToe:
             'o' : 'o'
         }
         self.count_moves = 0
+        self.game_end = False
     
     def __position_is_valid(self, x, y):
         return x >= 0 and x < 3 and y >= 0 and y < 3 and self.board[x][y] == ' '
 
     def update_game(self, x, y, mark):
+        if (self.game_end):
+            raise Exception('O jogo acabou')
+
         if (mark == 'x' or mark == 'o'):
             if (self.__position_is_valid(x, y)):
                 self.board[x][y] = self.symbols[mark]
@@ -20,12 +24,18 @@ class TicTacToe:
         else:
             raise Exception('Símbolo Inválido. Digite \'x\' ou \'o\'')
 
-        self.show_board()
-
         if (self.__check_game(x, y, mark)):
-            print("O jogador com {value} ganhou!!".format(value = self.symbols[mark]))
+            print(f"O jogador com {self.symbols[mark]} ganhou!!")
+            self.game_end = True
         elif (self.count_moves == 9):
             print ("Os jogadores empataram!!")
+            self.game_end = True
+    
+    def set_symbol(self, mark, symbol):
+        if (symbol not in self.symbols.values()):
+            self.symbols[mark] = symbol
+        else:
+            raise Exception('Este símbolo já foi cadastrado')
     
     def __check_game(self, x, y, mark):
         i = j = 0
@@ -79,16 +89,20 @@ class TicTacToe:
     
 def main():
     game = TicTacToe()
-    
     game.update_game(1, 1, 'x')
     game.update_game(1, 2, 'o')
     game.update_game(0, 1, 'x')
     game.update_game(2, 1, 'o')
     game.update_game(0,0, 'o')
-    game.update_game(0,2,'o')
+    game.update_game(0,2,'x')
     game.update_game(1,0,'x')
-    game.update_game(2,0,'o')
-    game.update_game(2,2,'x')
+    game.update_game(2,0,'x')
+    game.show_board()
+
+    new_game = TicTacToe()
+    new_game.set_symbol('x', 'Y')
+    new_game.update_game(1, 1, 'x')
+    new_game.show_board()
     
 if __name__ == "__main__":
     main()
