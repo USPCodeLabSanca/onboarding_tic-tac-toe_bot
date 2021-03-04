@@ -5,13 +5,13 @@ import json
 TOKEN = '1611542237:AAGPMlkeNxp3geL0urxsSsBncnOBROjctsg' # só pra testar
 
 users_file = open('users.json')
-users_queue = json.load(users_file)
+game_users = json.load(users_file)
 users_file.close()
 
 
 def start(update, context):
-    if search_user_in_queue_by_id(update.effective_user.id) != None:
-        update.message.reply_text("Você já está presente na fila")
+    if search_user_in_list_by_id(update.effective_user.id) != None:
+        update.message.reply_text("Você já está cadastrado! Digite /play para ir para o menu do jogo")
         return tex.ConversationHandler.END
     update.message.reply_text("Bem-vindo(a/e)! Escolha um nickname:")
     return "SET_NICK"
@@ -26,21 +26,22 @@ def set_nick(update, context):
         update.message.reply_text("Esse nick já existe, por favor digite outro")
         return "SET_NICK"
 
-    user_object = {
-        "user_id": my_user_id,
-        "username": my_username,
-        "nickname": my_nick
-    }
-
-    for user in users_queue:
+    for user in game_users:
         if my_user_id == user["user_id"]:
             user["nickname"] = my_nick
-            update_queue_json_file()
+            #update_list_json_file()
             update.message.reply_text('Nickname modificado com sucesso!')
             return tex.ConversationHandler.END
 
-    #users_queue.append(user_object)
-    #update_queue_json_file()
+    user_object = {
+        "user_id": my_user_id,
+        "username": my_username,
+        "nickname": my_nick,
+        "active": False
+    }
+
+    game_users.append(user_object)
+    #update_list_json_file()
 
     text = f'Muito bem, {my_nick}. Digite /play para ir para o menu do jogo ou aguarde ser chamado para uma partida'
     update.message.reply_text(text)
@@ -48,15 +49,15 @@ def set_nick(update, context):
 
 
 def change_nick(update, context):
-    if search_user_in_queue(update.effective_user.name) == None:
-        update.message.reply_text("Impossível mudar seu apelido! Você não está cadastrado na fila de espera.")
+    if search_user_in_list_by_id(update.effective_user.id) == None:
+        update.message.reply_text("Impossível mudar seu apelido! Dê o comando /start para iniciar.")
         return tex.ConversationHandler.END
     update.message.reply_text("Digite o novo nickname.")
     return "SET_NICK"
 
 
 def nick_exists(nickname):
-    for user in users_queue:
+    for user in game_users:
         if(nickname == user["nickname"]):
             return True
     return False
@@ -71,83 +72,106 @@ def invalid_nick(update, context):
 def users(update, context):
     users = []
 
-    update.message.reply_text('Atualmente, esses são os usuários presentes na fila:')
+   # update.message.reply_text('Atualmente, esses são os outros usuários presentes na fila:')
 
-
-    for user in users_queue:
-        if(update.effective_user.id != user["user_id"]): 
+    for user in game_users:
+        if(user["active"] == True and update.effective_user.id != user["user_id"]): 
             users.append(user['nickname'])
 
-    text_user_list = "\n".join(users)
+    if len(users) > 0:
+        text = "\n".join(users)
+    else:
+        text = 'Parece que não há ninguém por aqui'
 
     context.bot.sendMessage(
-        chat_id=update.effective_chat.id, text=text_user_list)
+        chat_id=update.effective_chat.id, text=text)
 
 
-def update_queue_json_file():
-    users_file = open('users.json', "w")
-    json.dump(users_queue, users_file, indent=2)
-    users_file.close()
+#def update_list_json_file():
+#    users_file = open('users.json', "w")
+#    json.dump(game_users, users_file, indent=2)
+#    users_file.close()
 
 
-def search_user_in_queue(username):
-    for user in users_queue:
+def search_user_in_list_by_name(username):
+    for user in game_users:
         if(username == user["username"]):
             return user
     return None
 
 
-def search_user_in_queue_by_nick(nickname):
-    for user in users_queue:
+def search_user_in_list_by_nick(nickname):
+    for user in game_users:
         if(nickname == user["nickname"]):
             return user
     return None
 
 
-def search_user_in_queue_by_id(user_id):
-    for user in users_queue:
+def search_user_in_list_by_id(user_id):
+    for user in game_users:
         if(user_id == user["user_id"]):
             return user
     return None
 
 
-def remove_user_from_queue(user_id):
-    for user in users_queue:
+def deactivate_user(user_id):
+    for user in game_users:
         if(user_id == user["user_id"]):
-            users_queue.remove(user)
-            update_queue_json_file()
+            #game_users.remove(user)
+            #update_list_json_file()
+            user["active"] = False
 
 
-def get_user_from_queue_start(skip_user_id):
-    len_queue = len(users_queue)
+def activate_user(user_id):
+    for user in game_users:
+        if(user_id == user["user_id"]):
+            #game_users.remove(user)
+            #update_list_json_file()
+            user["active"] = True
 
-    if len_queue == 0:
-        return None
+
+def get_user_from_list_start(skip_user_id):
+    #len_list = len(game_users)
+    #
+    #if len_list == 0:
+    #    return None
+    #
+    #if game_users[0]["user_id"] == skip_user_id:
+    #    if len_list >= 2:
+    #        copy = game_users[1]
+    #        game_users.remove(game_users[1])
+    #        game_users.append(copy)
+    #        update_list_json_file()
+    #        return copy
+    #    return None
+    #
+    #copy = game_users[0] 
+    #game_users.remove(game_users[0])
+    #game_users.append(copy)
+    #update_list_json_file()
+    #return copy 
+    for user in game_users:
+        if user["user_id"] != skip_user_id:
+            game_users.remove(user)
+            game_users.append(user)
+            user["active"] = False
+            return user
     
-    if users_queue[0]["user_id"] == skip_user_id:
-        if len_queue >= 2:
-            copy = users_queue[1]
-            users_queue.remove(users_queue[1])
-            users_queue.append(copy)
-            update_queue_json_file()
-            return copy
-        return None
-
-    copy = users_queue[0] 
-    users_queue.remove(users_queue[0])
-    users_queue.append(copy)
-    update_queue_json_file()
-    return copy 
+    return None
 
 
 def play_command(update, context):
     options = []
-    if search_user_in_queue(update.effective_user.name) == None:
+    user = search_user_in_list_by_id(update.effective_user.id)
+    if user == None:
+        update.message.reply_text('Você não está cadastrado! Digite /start para continuar')
+        return tex.ConversationHandler.END
+    elif user["active"] == False:
         options.append(['Entrar na fila'])
+        options.append(['Jogar (usuário aleatório)'])
+        options.append(['Jogar (usuário específico)'])
     else:
         options.append(['Sair da fila'])
-    options.append(['Jogar (usuário aleatório)'])
-    options.append(['Jogar (usuário específico)'])
     keyboard = t.ReplyKeyboardMarkup(options, one_time_keyboard=True)
     text = 'Selecione uma opção:'
     update.message.reply_text(text, reply_markup=keyboard)
@@ -157,40 +181,47 @@ def play_command(update, context):
 def check_option(update, context):
     user_input = update.message.text 
     user_id = update.effective_user.id
-    if search_user_in_queue(update.effective_user.name) == None:
+    existing_user = search_user_in_list_by_id(update.effective_user.id)
+
+    if existing_user == None:
+        text = 'Você ainda não está cadastrado! Dê /start para começar'
+        return tex.ConversationHandler.END
+
+    if existing_user["active"] == False:
         if user_input == 'Entrar na fila':
             text = 'Entrando na fila...'
             context.bot.sendMessage(chat_id=user_id, text=text)
-            return start(update, context)
-    if user_input == 'Sair da fila':
-        text = 'Saindo da fila...'
-        context.bot.sendMessage(chat_id=user_id, text=text)
-        return remove_user(update, context)
-    elif user_input == 'Jogar (usuário aleatório)':
-        text = 'Você vai jogar com um usuário aleatório'
-        context.bot.sendMessage(chat_id=user_id, text=text)
-        return random_user(update, context)
-    elif user_input == 'Jogar (usuário específico)':
-        text = 'Você vai jogar com um usuário específico'
-        context.bot.sendMessage(chat_id=user_id, text=text)
-        text = 'Digite o nickname de seu adversário'
-        context.bot.sendMessage(chat_id=user_id, text=text)
-        return 'SPECIFIC_USER'
+            activate_user(update.effective_user.id)
     else:
-        text = 'Opção inválida!'
-        context.bot.sendMessage(chat_id=user_id, text=text)
-        return 'CHECK_OPTION'
+        if user_input == 'Sair da fila':
+            text = 'Saindo da fila...'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            return remove_user(update, context)
+        elif user_input == 'Jogar (usuário aleatório)':
+            text = 'Você vai jogar com um usuário aleatório'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            return random_user(update, context)
+        elif user_input == 'Jogar (usuário específico)':
+            text = 'Você vai jogar com um usuário específico'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            text = 'Digite o nickname de seu adversário'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            return 'SPECIFIC_USER'
+        else:
+            text = 'Opção inválida!'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            return 'CHECK_OPTION'
     return tex.ConversationHandler.END
 
 
 def remove_user(update, context):
-    existingPlayer = search_user_in_queue(update.effective_user.name)
+    existingPlayer = search_user_in_list_by_id(update.effective_user.id)
     if existingPlayer == None:
-        text = 'Você não estava incluído na fila. Digite /start para continuar'
+        text = 'Você não estava cadastrado. Digite /start para continuar'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
     else:
-        remove_user_from_queue(existingPlayer["user_id"])
+        deactivate_user(existingPlayer["user_id"])
         text = 'Seu nome foi excluído da fila do jogo!'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
     return tex.ConversationHandler.END
@@ -199,7 +230,7 @@ def remove_user(update, context):
 def random_user(update, context):
     player1_id = update.effective_user.id
     player1_name = update.effective_user.name
-    player2 = get_user_from_queue_start(update.effective_user.id)
+    player2 = get_user_from_list_start(update.effective_user.id)
     text = ''
     if player2 == None:
         text = 'Parece que você está sozinho por aqui. Não há usuários disponíveis. '
@@ -219,7 +250,7 @@ def random_user(update, context):
 def specific_user(update, context):
     player1_id = update.effective_user.id
     player1_username = update.effective_user.name
-    player2 = search_user_in_queue_by_nick(update.message.text)
+    player2 = search_user_in_list_by_nick(update.message.text)
     if player2 == None:
         text = 'Não foi encontrado nenhum usuário com esse nome na fila'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
