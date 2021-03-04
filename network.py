@@ -4,14 +4,16 @@ import json
 
 TOKEN = '1611542237:AAGPMlkeNxp3geL0urxsSsBncnOBROjctsg' # só pra testar
 
+
 users_file = open('users.json')
-users_queue = json.load(users_file)
+game_users = json.load(users_file)
 users_file.close()
 
 
+
 def start(update, context):
-    if search_user_in_queue_by_id(update.effective_user.id) != None:
-        update.message.reply_text("Você já está presente na fila")
+    if search_user_by_id(game_users, update.effective_user.id) != None:
+        update.message.reply_text("Você já está presente no jogo!")
         return tex.ConversationHandler.END
     update.message.reply_text("Bem-vindo(a/e)! Escolha um nickname:")
     return "SET_NICK"
@@ -32,14 +34,13 @@ def set_nick(update, context):
         "nickname": my_nick
     }
 
-    for user in users_queue:
+    for user in game_users:
         if my_user_id == user["user_id"]:
             user["nickname"] = my_nick
-            update_queue_json_file()
             update.message.reply_text('Nickname modificado com sucesso!')
             return tex.ConversationHandler.END
 
-    #users_queue.append(user_object)
+    #game_users.append(user_object)
     #update_queue_json_file()
 
     text = f'Muito bem, {my_nick}. Digite /play para ir para o menu do jogo ou aguarde ser chamado para uma partida'
@@ -48,7 +49,7 @@ def set_nick(update, context):
 
 
 def change_nick(update, context):
-    if search_user_in_queue(update.effective_user.name) == None:
+    if search_user_by_id(game_users, update.effective_user.user_id) == None:
         update.message.reply_text("Impossível mudar seu apelido! Você não está cadastrado na fila de espera.")
         return tex.ConversationHandler.END
     update.message.reply_text("Digite o novo nickname.")
@@ -56,7 +57,7 @@ def change_nick(update, context):
 
 
 def nick_exists(nickname):
-    for user in users_queue:
+    for user in game_users:
         if(nickname == user["nickname"]):
             return True
     return False
@@ -74,8 +75,8 @@ def users(update, context):
     update.message.reply_text('Atualmente, esses são os usuários presentes na fila:')
 
 
-    for user in users_queue:
-        if(update.effective_user.id != user["user_id"]): 
+    for user in game_users:
+        if(update.effective_user.id != user["user_id"] and user["active"] == true): 
             users.append(user['nickname'])
 
     text_user_list = "\n".join(users)
@@ -84,65 +85,52 @@ def users(update, context):
         chat_id=update.effective_chat.id, text=text_user_list)
 
 
-def update_queue_json_file():
-    users_file = open('users.json', "w")
-    json.dump(users_queue, users_file, indent=2)
-    users_file.close()
 
-
-def search_user_in_queue(username):
-    for user in users_queue:
-        if(username == user["username"]):
-            return user
-    return None
 
 
 def search_user_in_queue_by_nick(nickname):
-    for user in users_queue:
+    for user in game_users:
         if(nickname == user["nickname"]):
             return user
     return None
 
 
-def search_user_in_queue_by_id(user_id):
-    for user in users_queue:
+def search_user_by_id(users, user_id):
+    for user in users:
         if(user_id == user["user_id"]):
             return user
     return None
 
 
 def remove_user_from_queue(user_id):
-    for user in users_queue:
+    for user in game_users:
         if(user_id == user["user_id"]):
-            users_queue.remove(user)
-            update_queue_json_file()
+            game_users.remove(user)
 
 
 def get_user_from_queue_start(skip_user_id):
-    len_queue = len(users_queue)
+    len_queue = len(game_users)
 
     if len_queue == 0:
         return None
     
-    if users_queue[0]["user_id"] == skip_user_id:
+    if game_users[0]["user_id"] == skip_user_id:
         if len_queue >= 2:
-            copy = users_queue[1]
-            users_queue.remove(users_queue[1])
-            users_queue.append(copy)
-            update_queue_json_file()
+            copy = game_users[1]
+            game_users.remove(game_users[1])
+            game_users.append(copy)
             return copy
         return None
 
-    copy = users_queue[0] 
-    users_queue.remove(users_queue[0])
-    users_queue.append(copy)
-    update_queue_json_file()
+    copy = game_users[0] 
+    game_users.remove(game_users[0])
+    game_users.append(copy)
     return copy 
 
 
 def play_command(update, context):
     options = []
-    if search_user_in_queue(update.effective_user.name) == None:
+    if search_user_by_id(game_users, update.effective_user.id) == None:
         options.append(['Entrar na fila'])
     else:
         options.append(['Sair da fila'])
@@ -157,7 +145,7 @@ def play_command(update, context):
 def check_option(update, context):
     user_input = update.message.text 
     user_id = update.effective_user.id
-    if search_user_in_queue(update.effective_user.name) == None:
+    if search_user_by_id(game_users, user_id) == None:
         if user_input == 'Entrar na fila':
             text = 'Entrando na fila...'
             context.bot.sendMessage(chat_id=user_id, text=text)
@@ -184,7 +172,7 @@ def check_option(update, context):
 
 
 def remove_user(update, context):
-    existingPlayer = search_user_in_queue(update.effective_user.name)
+    existingPlayer = search_user_by_id(game_users, update.effective_user.id)
     if existingPlayer == None:
         text = 'Você não estava incluído na fila. Digite /start para continuar'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
