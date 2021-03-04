@@ -30,6 +30,73 @@ def set_listening(user_id, condition):
             return
 
 
+def nick_exists(nickname):
+    for user in game_users:
+        if(nickname == user["nickname"]):
+            return True
+    return False
+
+
+def invalid_nick(update, context):
+    update.message.reply_text(
+        "Nickname inválido! Ele NÃO pode começar com '/'. Digite outro:")
+    return "SET_NICK"
+
+
+def search_user_in_list_by_name(username):
+    for user in game_users:
+        if(username == user["username"]):
+            return user
+    return None
+
+
+def search_user_in_list_by_nick(nickname):
+    for user in game_users:
+        if(nickname == user["nickname"]):
+            return user
+    return None
+
+
+def search_user_by_id(users, user_id):
+    for user in users:
+        if(user_id == user["user_id"]):
+            return user
+    return None
+
+
+def remove_user_from_queue(user_id):
+    for user in game_users:
+        if(user_id == user["user_id"]):
+            game_users.remove(user)
+
+
+def deactivate_user(user_id):
+    for user in game_users:
+        if(user_id == user["user_id"]):
+            #game_users.remove(user)
+            #update_list_json_file()
+            user["active"] = False
+
+
+
+def activate_user(user_id):
+    for user in game_users:
+        if(user_id == user["user_id"]):
+            #game_users.remove(user)
+            #update_list_json_file()
+            user["active"] = True
+
+
+def get_user_from_list_start(skip_user_id):
+  
+    for user in game_users:
+        if (user["user_id"] != skip_user_id and user["active"] == True and user["adversary"] == None):
+            game_users.remove(user)
+            game_users.append(user)
+            deactivate_user(user["user_id"])
+            return user    
+    return None
+
 def start(update, context):
     if search_user_by_id(game_users, update.effective_user.id) != None:
         update.message.reply_text("Você já está presente no jogo! Digite /play para ir para o menu!")
@@ -79,27 +146,13 @@ def change_nick(update, context):
     update.message.reply_text("Digite o novo nickname.")
     return "SET_NICK"
 
-
-def nick_exists(nickname):
-    for user in game_users:
-        if(nickname == user["nickname"]):
-            return True
-    return False
-
-
-def invalid_nick(update, context):
-    update.message.reply_text(
-        "Nickname inválido! Ele NÃO pode começar com '/'. Digite outro:")
-    return "SET_NICK"
-
-
 def users(update, context):
     users = []
 
    # update.message.reply_text('Atualmente, esses são os outros usuários presentes na fila:')
 
     for user in game_users:
-        if(user["active"] == True and update.effective_user.id != user["user_id"]): 
+        if(user["active"] == True and user["adversary"] == None and update.effective_user.id != user["user_id"]): 
             users.append(user['nickname'])
 
     if len(users) > 0:
@@ -109,69 +162,6 @@ def users(update, context):
 
     context.bot.sendMessage(
         chat_id=update.effective_chat.id, text=text)
-
-
-
-#def update_list_json_file():
-#    users_file = open('users.json', "w")
-#    json.dump(game_users, users_file, indent=2)
-#    users_file.close()
-
-
-def search_user_in_list_by_name(username):
-    for user in game_users:
-        if(username == user["username"]):
-            return user
-    return None
-
-
-def search_user_in_list_by_nick(nickname):
-    for user in game_users:
-        if(nickname == user["nickname"]):
-            return user
-    return None
-
-
-def search_user_by_id(users, user_id):
-    for user in users:
-        if(user_id == user["user_id"]):
-            return user
-    return None
-
-
-def remove_user_from_queue(user_id):
-    for user in game_users:
-        if(user_id == user["user_id"]):
-            game_users.remove(user)
-
-
-    
-def deactivate_user(user_id):
-    for user in game_users:
-        if(user_id == user["user_id"]):
-            #game_users.remove(user)
-            #update_list_json_file()
-            user["active"] = False
-
-
-
-def activate_user(user_id):
-    for user in game_users:
-        if(user_id == user["user_id"]):
-            #game_users.remove(user)
-            #update_list_json_file()
-            user["active"] = True
-
-
-def get_user_from_list_start(skip_user_id):
-  
-    for user in game_users:
-        if (user["user_id"] != skip_user_id and user["active"] == True):
-            game_users.remove(user)
-            game_users.append(user)
-            deactivate_user(user["user_id"])
-            return user    
-    return None
 
 
 def play_command(update, context):
