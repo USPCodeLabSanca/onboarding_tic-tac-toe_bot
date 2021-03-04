@@ -1,12 +1,14 @@
 [
   {
-    "user_id": 1333253265,
-    "username": "Elisangela",
-    "nickname": "elis"
+    "user_id": 120913093,
+    "username": "@alguem",
+    "nickname": "salve123",
+    "active": false
   },
   {
-    "user_id": 1032497702,
-    "username": "@Rabelo_2002",
-    "nickname": "rabelo"
+    "user_id": 150913073,
+    "username": "@username",
+    "nickname": "nickzin",
+    "active": false
   }
-]
+] 
