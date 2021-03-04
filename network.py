@@ -40,7 +40,9 @@ def set_nick(update, context):
         "user_id": my_user_id,
         "username": my_username,
         "nickname": my_nick,
-        "active": False
+        "active": False,
+        "adversary": None,
+        "listening": False
     }
 
     game_users.append(user_object)
@@ -52,7 +54,7 @@ def set_nick(update, context):
 
 
 def change_nick(update, context):
-    if search_user_by_id(game_users, update.effective_user.user_id) == None:
+    if search_user_by_id(game_users, update.effective_user.id) == None:
         update.message.reply_text("Impossível mudar seu apelido! Dê o comando /start para iniciar.")
         return tex.ConversationHandler.END
     update.message.reply_text("Digite o novo nickname.")
@@ -185,6 +187,8 @@ def check_option(update, context):
         text = 'Entrando na fila...'
         context.bot.sendMessage(chat_id=user_id, text=text)
         activate_user(update.effective_user.id)
+        existing_user["listening"] = True
+        return "CONVERSATION"
     else:
         if user_input == 'Sair da fila':
             text = 'Saindo da fila...'
@@ -224,44 +228,100 @@ def remove_user(update, context):
 def random_user(update, context):
     player1_id = update.effective_user.id
     player1_name = update.effective_user.name
+    player1 = search_user_by_id(game_users, player1_id)
     player2 = get_user_from_list_start(update.effective_user.id)
     text = ''
     if player2 == None:
         text = 'Parece que você está sozinho por aqui. Não há usuários disponíveis. '
         text += 'Compartilhe o bot com os amigos para poder jogar.'
     else:
-        text1 = f'{player1_name}, você vai jogar com {player2["username"]}'
-        text2 = f'{player2["username"]}, você vai jogar com {player1_name}'
+        text1 = f'{player1_name}, você vai jogar com {player2["username"]}, você começa jogando.'
+        text2 = f'{player2["username"]}, você vai jogar com {player1_name}, você começa esperando o player1.'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text1)
         context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
-        # função do jogo
-        text = 'Você jogou com um usuário aleatório. Retorno com sucesso'
-        context.bot.sendMessage(chat_id=player2["user_id"], text=text)
-    context.bot.sendMessage(chat_id=player1_id, text=text)
-    return tex.ConversationHandler.END
+        
+        player1["listening"] = False
+        player1["active"] = True
+        player1["adversary"] = player2["user_id"]
+        
+        player2["listening"] = True
+        player2["active"] = True
+        player2["adversary"] = player1["user_id"]
+
+        
+    return "CONVERSATION"
 
 
 def specific_user(update, context):
     player1_id = update.effective_user.id
     player1_username = update.effective_user.name
+    
+    player1 = search_user_by_id(game_users, player1_id)
+
     player2 = search_user_in_list_by_nick(update.message.text)
+    
     if player2 == None:
         text = 'Não foi encontrado nenhum usuário com esse nome na fila'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
+    
     elif player2["user_id"] == player1_id:
         text = 'Você não pode jogar consigo mesmo!'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
-    text1 = f'{player1_username}, você vai jogar com {player2["username"]}'
-    text2 = f'{player2["username"]}, você vai jogar com {player1_username}'
+    
+    text1 = f'{player1_username}, você vai jogar com {player2["username"]}, você começa jogando.'
+    text2 = f'{player2["username"]}, você vai jogar com {player1_username}, você começa esperando o player1.'
     context.bot.sendMessage(chat_id=player1_id, text=text1)
     context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
-    # função do jogo
-    text = 'Você jogou com um usuário específico. Retorno com sucesso'
-    context.bot.sendMessage(chat_id=player1_id, text=text)
-    context.bot.sendMessage(chat_id=player2["user_id"], text=text)
-    return tex.ConversationHandler.END
+    
+    player1["listening"] = False
+    player1["active"] = True
+    player1["adversary"] = player2["user_id"]
+    
+    player2["listening"] = True
+    player2["active"] = True
+    player2["adversary"] = player1["user_id"]
+    return "CONVERSATION"
+
+
+def CONVERSATION(update, context):
+    id = update.effective_user.id
+    user = search_user_by_id(game_users, id)
+    adversary = search_user_by_id(game_users, user["adversary"])
+    text = update.message.text
+
+    if(text == "sair"):
+        if(user["adversary"] == None):
+            return remove_user(update, context)
+        else:
+            update.message.reply_text("Você está no meio de uma partida...")
+            return "CONVERSATION"
+
+
+    if(user["listening"] == True):
+        update.message.reply_text("Você deve esperar pelo adversário")
+        return "CONVERSATION"
+
+    if(text == "FIM"):
+        user["listening"] = False
+        user["adversary"] = None
+        user["active"] = False
+        adversary["listening"] = False
+        adversary["adversary"] = None
+        adversary["active"] = False
+        return tex.ConversationHandler.END
+
+    
+    context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
+    update.message.reply_text("Mensagem enviada, espere por uma resposta")
+
+    user["listening"] = True
+    adversary["listening"] = False
+
+    return "CONVERSATION"
+    
+
 
 
 #updater = tex.Updater('1297400305:AAGjXuYCv00jzjaiCpDQSsl8G6TDLXkx_Cs')
@@ -281,7 +341,8 @@ play_handler = tex.ConversationHandler(
     entry_points=[tex.CommandHandler("play", play_command)],
     states={
         'CHECK_OPTION': [tex.MessageHandler(tex.Filters.text, check_option)],
-        'SPECIFIC_USER': [tex.MessageHandler(tex.Filters.text, specific_user)]
+        'SPECIFIC_USER': [tex.MessageHandler(tex.Filters.text, specific_user)],
+        'CONVERSATION': [tex.MessageHandler(tex.Filters.text, CONVERSATION)]
     },
     fallbacks=[tex.CommandHandler("play", play_command)]
 )
