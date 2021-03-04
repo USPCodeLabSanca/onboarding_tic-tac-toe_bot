@@ -10,6 +10,9 @@ users_file.close()
 
 
 def start(update, context):
+    if search_user_in_queue_by_id(update.effective_user.id) != None:
+        update.message.reply_text("Você já está presente na fila")
+        return tex.ConversationHandler.END
     update.message.reply_text("Bem-vindo(a/e)! Escolha um nickname:")
     return "SET_NICK"
 
@@ -36,8 +39,8 @@ def set_nick(update, context):
             update.message.reply_text('Nickname modificado com sucesso!')
             return tex.ConversationHandler.END
 
-    users_queue.append(user_object)
-    update_queue_json_file()
+    #users_queue.append(user_object)
+    #update_queue_json_file()
 
     text = f'Muito bem, {my_nick}. Digite /play para ir para o menu do jogo ou aguarde ser chamado para uma partida'
     update.message.reply_text(text)
@@ -70,8 +73,10 @@ def users(update, context):
 
     update.message.reply_text('Atualmente, esses são os usuários presentes na fila:')
 
+
     for user in users_queue:
-        users.append(user['nickname'])
+        if(update.effective_user.id != user["user_id"]): 
+            users.append(user['nickname'])
 
     text_user_list = "\n".join(users)
 
@@ -88,6 +93,20 @@ def update_queue_json_file():
 def search_user_in_queue(username):
     for user in users_queue:
         if(username == user["username"]):
+            return user
+    return None
+
+
+def search_user_in_queue_by_nick(nickname):
+    for user in users_queue:
+        if(nickname == user["nickname"]):
+            return user
+    return None
+
+
+def search_user_in_queue_by_id(user_id):
+    for user in users_queue:
+        if(user_id == user["user_id"]):
             return user
     return None
 
@@ -131,7 +150,6 @@ def play_command(update, context):
     options.append(['Jogar (usuário específico)'])
     keyboard = t.ReplyKeyboardMarkup(options, one_time_keyboard=True)
     text = 'Selecione uma opção:'
-    user_id = update.effective_user.id
     update.message.reply_text(text, reply_markup=keyboard)
     return 'CHECK_OPTION' 
 
@@ -155,7 +173,7 @@ def check_option(update, context):
     elif user_input == 'Jogar (usuário específico)':
         text = 'Você vai jogar com um usuário específico'
         context.bot.sendMessage(chat_id=user_id, text=text)
-        text = 'Digite o @ de seu adversário'
+        text = 'Digite o nickname de seu adversário'
         context.bot.sendMessage(chat_id=user_id, text=text)
         return 'SPECIFIC_USER'
     else:
@@ -201,7 +219,7 @@ def random_user(update, context):
 def specific_user(update, context):
     player1_id = update.effective_user.id
     player1_username = update.effective_user.name
-    player2 = search_user_in_queue(update.message.text)
+    player2 = search_user_in_queue_by_nick(update.message.text)
     if player2 == None:
         text = 'Não foi encontrado nenhum usuário com esse nome na fila'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
