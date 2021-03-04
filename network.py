@@ -4,14 +4,16 @@ import json
 
 TOKEN = '1611542237:AAGPMlkeNxp3geL0urxsSsBncnOBROjctsg' # só pra testar
 
+
 users_file = open('users.json')
 game_users = json.load(users_file)
 users_file.close()
 
 
+
 def start(update, context):
-    if search_user_in_list_by_id(update.effective_user.id) != None:
-        update.message.reply_text("Você já está cadastrado! Digite /play para ir para o menu do jogo")
+    if search_user_by_id(game_users, update.effective_user.id) != None:
+        update.message.reply_text("Você já está presente no jogo! Digite /play para ir para o menu!")
         return tex.ConversationHandler.END
     update.message.reply_text("Bem-vindo(a/e)! Escolha um nickname:")
     return "SET_NICK"
@@ -25,6 +27,7 @@ def set_nick(update, context):
     if nick_exists(my_nick):
         update.message.reply_text("Esse nick já existe, por favor digite outro")
         return "SET_NICK"
+
 
     for user in game_users:
         if my_user_id == user["user_id"]:
@@ -49,7 +52,7 @@ def set_nick(update, context):
 
 
 def change_nick(update, context):
-    if search_user_in_list_by_id(update.effective_user.id) == None:
+    if search_user_by_id(game_users, update.effective_user.user_id) == None:
         update.message.reply_text("Impossível mudar seu apelido! Dê o comando /start para iniciar.")
         return tex.ConversationHandler.END
     update.message.reply_text("Digite o novo nickname.")
@@ -87,6 +90,7 @@ def users(update, context):
         chat_id=update.effective_chat.id, text=text)
 
 
+
 #def update_list_json_file():
 #    users_file = open('users.json', "w")
 #    json.dump(game_users, users_file, indent=2)
@@ -107,19 +111,27 @@ def search_user_in_list_by_nick(nickname):
     return None
 
 
-def search_user_in_list_by_id(user_id):
-    for user in game_users:
+def search_user_by_id(users, user_id):
+    for user in users:
         if(user_id == user["user_id"]):
             return user
     return None
 
 
+def remove_user_from_queue(user_id):
+    for user in game_users:
+        if(user_id == user["user_id"]):
+            game_users.remove(user)
+
+
+    
 def deactivate_user(user_id):
     for user in game_users:
         if(user_id == user["user_id"]):
             #game_users.remove(user)
             #update_list_json_file()
             user["active"] = False
+
 
 
 def activate_user(user_id):
@@ -131,38 +143,19 @@ def activate_user(user_id):
 
 
 def get_user_from_list_start(skip_user_id):
-    #len_list = len(game_users)
-    #
-    #if len_list == 0:
-    #    return None
-    #
-    #if game_users[0]["user_id"] == skip_user_id:
-    #    if len_list >= 2:
-    #        copy = game_users[1]
-    #        game_users.remove(game_users[1])
-    #        game_users.append(copy)
-    #        update_list_json_file()
-    #        return copy
-    #    return None
-    #
-    #copy = game_users[0] 
-    #game_users.remove(game_users[0])
-    #game_users.append(copy)
-    #update_list_json_file()
-    #return copy 
+  
     for user in game_users:
-        if user["user_id"] != skip_user_id:
+        if (user["user_id"] != skip_user_id and user["active"] == True):
             game_users.remove(user)
             game_users.append(user)
-            user["active"] = False
-            return user
-    
+            deactivate_user(user["user_id"])
+            return user    
     return None
 
 
 def play_command(update, context):
     options = []
-    user = search_user_in_list_by_id(update.effective_user.id)
+    user = search_user_by_id(game_users, update.effective_user.id)
     if user == None:
         update.message.reply_text('Você não está cadastrado! Digite /start para continuar')
         return tex.ConversationHandler.END
@@ -181,17 +174,17 @@ def play_command(update, context):
 def check_option(update, context):
     user_input = update.message.text 
     user_id = update.effective_user.id
-    existing_user = search_user_in_list_by_id(update.effective_user.id)
+
+    existing_user = search_user_by_id(game_users, user_id)
 
     if existing_user == None:
         text = 'Você ainda não está cadastrado! Dê /start para começar'
         return tex.ConversationHandler.END
 
-    if existing_user["active"] == False:
-        if user_input == 'Entrar na fila':
-            text = 'Entrando na fila...'
-            context.bot.sendMessage(chat_id=user_id, text=text)
-            activate_user(update.effective_user.id)
+    if (existing_user["active"] == False and user_input == 'Entrar na fila'):
+        text = 'Entrando na fila...'
+        context.bot.sendMessage(chat_id=user_id, text=text)
+        activate_user(update.effective_user.id)
     else:
         if user_input == 'Sair da fila':
             text = 'Saindo da fila...'
@@ -215,7 +208,8 @@ def check_option(update, context):
 
 
 def remove_user(update, context):
-    existingPlayer = search_user_in_list_by_id(update.effective_user.id)
+    existingPlayer = search_user_by_id(game_users, update.effective_user.id)
+
     if existingPlayer == None:
         text = 'Você não estava cadastrado. Digite /start para continuar'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
@@ -287,7 +281,6 @@ play_handler = tex.ConversationHandler(
     entry_points=[tex.CommandHandler("play", play_command)],
     states={
         'CHECK_OPTION': [tex.MessageHandler(tex.Filters.text, check_option)],
-        'SET_NICK': [tex.MessageHandler(tex.Filters.text & ~tex.Filters.command, set_nick)],
         'SPECIFIC_USER': [tex.MessageHandler(tex.Filters.text, specific_user)]
     },
     fallbacks=[tex.CommandHandler("play", play_command)]
