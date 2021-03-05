@@ -12,6 +12,7 @@ class TicTacToe:
         return x >= 0 and x < 3 and y >= 0 and y < 3 and self.board[x][y] == ' '
 
     def update_game(self, x, y, mark):
+        message = None
         if (self.game_end):
             raise Exception('O jogo acabou')
 
@@ -25,11 +26,12 @@ class TicTacToe:
             raise Exception('Símbolo Inválido. Digite \'x\' ou \'o\'')
 
         if (self.__check_game(x, y, mark)):
-            print(f"O jogador com {self.symbols[mark]} ganhou!!")
+            message = f"O jogador com {self.symbols[mark]} ganhou!!"
             self.game_end = True
         elif (self.count_moves == 9):
-            print ("Os jogadores empataram!!")
+            message = "Os jogadores empataram!!"
             self.game_end = True
+        return message
     
     def set_symbol(self, mark, symbol):
         if (symbol not in self.symbols.values()):

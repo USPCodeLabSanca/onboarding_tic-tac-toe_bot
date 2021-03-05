@@ -1,12 +1,14 @@
 import telegram as t
 import telegram.ext as tex
 import logging
+from tictactoe import TicTacToe
 
 IKB = t.InlineKeyboardButton
 IKM = t.InlineKeyboardMarkup
 
 # Função inicial do jogo
 def start(update: t.Update, context: tex.CallbackContext):
+    context.user_data['tictactoe'] = TicTacToe()
     # Zera o número de rounds jogados
     context.user_data['rounds'] = 0
 
@@ -19,14 +21,20 @@ def start(update: t.Update, context: tex.CallbackContext):
 
     keyboard = context.user_data['keyboard']
     rounds = context.user_data['rounds']
+    tictactoe = context.user_data['tictactoe']
     
     # Define a vez de quem vai jogar
     if rounds % 2 == 0:
         simbolo = '❌'
+        simbolo_ascii = 'x'
     else:
         simbolo = '⭕️'
+        simbolo_ascii = 'o'
+
+    tictactoe.set_symbol(simbolo_ascii, simbolo)
     # Atualiza o context contendo o símbolo do round atual
     context.user_data['simbolo'] = simbolo
+    context.user_data['simbolo_ascii'] = simbolo_ascii
 
     # Mostra a mensagem inicial
     update.message.reply_text("O jogo vai começar!")
@@ -43,6 +51,8 @@ def round(update: t.Update, context: tex.CallbackContext):
     rounds = context.user_data['rounds']
     keyboard = context.user_data['keyboard']
     simbolo = context.user_data['simbolo']
+    simbolo_ascii = context.user_data['simbolo_ascii']
+    tictactoe = context.user_data['tictactoe']
 
     # Aguarda a resposta
     update.callback_query.answer()
@@ -53,22 +63,33 @@ def round(update: t.Update, context: tex.CallbackContext):
 
     # Caso o botão já tenha sido selecionado, mostrar mensagem de erro
     try:
+        result = tictactoe.update_game(x, y, simbolo_ascii)
         keyboard[x][y] = IKB(simbolo, callback_data=data) #(x,y)
-    except:
-        update.callback_query.message.edit_text("Erro ao associar símbolo!")
+    except Exception as e:
+        update.callback_query.message.edit_text(str(e) + f"\nSelecione uma posição (seu símbolo é {simbolo})")
+        update.callback_query.message.edit_reply_markup(IKM(keyboard))
+        context.user_data['rounds'] = context.user_data['rounds'] - 1
+        return 'ROUND'
 
     # Define a "vez" de quem vai jogar
     if rounds % 2 == 0:
         simbolo = '❌'
+        simbolo_ascii = 'x'
     else:
         simbolo = '⭕️'
+        simbolo_ascii = 'o'
     # Atualiza o context contendo o símbolo do round atual
     context.user_data['simbolo'] = simbolo
+    context.user_data['simbolo_ascii'] = simbolo_ascii
 
     # Atualiza a mensagem contendo o símbolo (de quem é a vez)
     update.callback_query.message.edit_text(f"Selecione uma posição (seu símbolo é {simbolo})")
     # Mostra o teclado do jogo
     update.callback_query.message.edit_reply_markup(IKM(keyboard))
+
+    if result != None:
+        update.callback_query.message.reply_text(result)
+        return tex.ConversationHandler.END
 
     return 'ROUND'
 
@@ -77,7 +98,7 @@ def main():
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
 
-    updater = tex.Updater(token='1297400305:AAGjXuYCv00jzjaiCpDQSsl8G6TDLXkx_Cs')
+    updater = tex.Updater(token='')
     dp = updater.dispatcher
     
     # Handler do jogo
