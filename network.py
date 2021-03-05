@@ -186,13 +186,9 @@ def check_option(update, context):
         return "CONVERSATION"
 
     if user_input == 'Jogar (usuário aleatório)':
-        text = 'Você vai jogar com um usuário aleatório'
-        context.bot.sendMessage(chat_id=user_id, text=text)
         return random_user(update, context)
 
     if user_input == 'Jogar (usuário específico)':
-        text = 'Você vai jogar com um usuário específico'
-        context.bot.sendMessage(chat_id=user_id, text=text)
         text = 'Digite o nickname de seu adversário'
         context.bot.sendMessage(chat_id=user_id, text=text)
         return 'SPECIFIC_USER'
@@ -226,7 +222,7 @@ def random_user(update, context):
     player1["adversary"] = player2["user_id"] 
 
     player2["active"] = True
-    player2["listening"] = False
+    player2["listening"] = True
     player2["adversary"] = player1["user_id"] 
 
     return "CONVERSATION"
@@ -265,7 +261,7 @@ def specific_user(update, context):
     player1["adversary"] = player2["user_id"] 
 
     player2["active"] = True
-    player2["listening"] = False
+    player2["listening"] = True
     player2["adversary"] = player1["user_id"] 
 
     return "CONVERSATION"
@@ -279,18 +275,21 @@ def CONVERSATION(update, context):
     
     text = update.message.text
 
-    if(text == "sair"):
-        if(user["adversary"] == None):
+    if text == "sair":
+        if user["adversary"] == None:
             return remove_user(update, context)
         else:
             update.message.reply_text("Você está no meio de uma partida...")
             return "CONVERSATION"
 
-    if(user["listening"] == True):
+    if user["active"] == False:
+        return remove_user(update, context)
+
+    if user["listening"] == True:
         update.message.reply_text("Você deve esperar pelo adversário")
         return "CONVERSATION"
 
-    if(text == "FIM"):
+    if text == "FIM":
         adversary["listening"] = False
         adversary["adversary"] = None
         adversary["active"] = False
@@ -301,19 +300,14 @@ def CONVERSATION(update, context):
 
         text = "Você deu FIM a partida, para jogar novamente, digite /play."
         context.bot.sendMessage(chat_id=user["user_id"], text=text)
-
-        text="Seu adversário deu fim a partida, digite \"sair\" para sair também!"
+        text="Seu adversário deu fim a partida! Didite \"sair\" para sair também."
         context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
-
         return tex.ConversationHandler.END
 
-    try:
-        context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
-        adversary["listening"] = False
-        update.message.reply_text("Mensagem enviada, espere por uma resposta")
-        user["listening"] = True
-    except:
-        update.message.reply_text("Mensagem inválida!")
+    context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
+    adversary["listening"] = False
+    update.message.reply_text("Mensagem enviada, espere por uma resposta")
+    user["listening"] = True
 
     return "CONVERSATION"
     
