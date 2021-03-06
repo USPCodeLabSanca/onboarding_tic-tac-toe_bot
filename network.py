@@ -300,7 +300,7 @@ def CONVERSATION(update, context):
 
         text = "Você deu FIM a partida, para jogar novamente, digite /play."
         context.bot.sendMessage(chat_id=user["user_id"], text=text)
-        text="Seu adversário deu fim a partida! Didite \"sair\" para sair também."
+        text="Seu adversário deu fim a partida! Digite \"sair\" para sair também."
         context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
         return tex.ConversationHandler.END
 
@@ -360,10 +360,10 @@ change_nick_handler = tex.ConversationHandler(
 
 users_handler = tex.CommandHandler('users', users)
 
-dispatcher.add_handler(start_handler)
+dispatcher.add_handler(change_nick_handler)
 dispatcher.add_handler(play_handler)
 dispatcher.add_handler(users_handler)
-dispatcher.add_handler(change_nick_handler)
+dispatcher.add_handler(start_handler)
 
 updater.start_polling()
 
