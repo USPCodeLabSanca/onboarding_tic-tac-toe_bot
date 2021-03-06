@@ -252,7 +252,7 @@ def init_game(update, context, player2):
 
     # Mostra o teclado do jogo com o símbolo de quem começará a jogar
     
-    context.user_data["last_message"] = context.bot.sendMessage(chat_id=player1["user_id"], text=f"Selecione uma posição (seu símbolo é {player1['symbol']})", reply_markup=IKM(kbd))
+    player1["last_message"] =  context.bot.sendMessage(chat_id=player1["user_id"], text=f"Selecione uma posição (seu símbolo é {player1['symbol']})", reply_markup=IKM(kbd))
     context.bot.sendMessage(chat_id=player2["user_id"], text="Espere sua vez, o outro jogador está selecionando!")
     return "ROUND"
 
@@ -297,7 +297,6 @@ def specific_user(update, context):
 
 
 def gameRound(update, context):
-    print("ola")
     update.callback_query.answer()
 
     user_id = update.effective_user.id
@@ -319,8 +318,8 @@ def gameRound(update, context):
         update.callback_query.message.edit_reply_markup(IKM(game["keyboard"]))
         return 'ROUND'
 
-    #context.bot.deleteMessage(chat_id=user["user_id"], message_id=context.user_data["last_message"].message_id)
-    context.user_data["last_message"] = context.bot.sendMessage(chat_id=adversary["user_id"], text=f"Selecione uma posição (seu símbolo é {adversary['symbol']})", reply_markup=IKM(game["keyboard"]))
+    context.bot.deleteMessage(chat_id=user["user_id"], message_id=user["last_message"].message_id)
+    adversary["last_message"] = context.bot.sendMessage(chat_id=adversary["user_id"], text=f"Selecione uma posição (seu símbolo é {adversary['symbol']})", reply_markup=IKM(game["keyboard"]))
     context.bot.sendMessage(chat_id=user["user_id"], text="Espere sua vez, o outro jogador está selecionando!")
 
     if result != None:
