@@ -98,7 +98,7 @@ def main():
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
 
-    updater = tex.Updater(token='')
+    updater = tex.Updater(token='1611542237:AAGPMlkeNxp3geL0urxsSsBncnOBROjctsg')
     dp = updater.dispatcher
     
     # Handler do jogo
