@@ -26,10 +26,12 @@ class TicTacToe:
             raise Exception('Símbolo Inválido. Digite \'x\' ou \'o\'')
 
         if (self.__check_game(x, y, mark)):
-            message = f"O jogador com {self.symbols[mark]} ganhou!!"
+            #message = f"O jogador com {self.symbols[mark]} ganhou!!"
+            message = self.symbols[mark]
             self.game_end = True
         elif (self.count_moves == 9):
-            message = "Os jogadores empataram!!"
+            #message = "Os jogadores empataram!!"
+            message = '-1'
             self.game_end = True
         return message
     
