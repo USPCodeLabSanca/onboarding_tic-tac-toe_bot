@@ -4,6 +4,7 @@ import json
 import random
 from tictactoe import TicTacToe
 
+
 IKB = t.InlineKeyboardButton
 IKM = t.InlineKeyboardMarkup
 
@@ -21,19 +22,6 @@ def random_start(a, b):
         return a, b 
     return b, a
   
-
-def set_adversary(user_id, adversary_id):
-    for user in game_users:
-        if user["user_id"] == user_id:
-            user["adversary"] = adversary_id
-            return
-
-def set_listening(user_id, condition):
-    for user in game_users:
-        if user["user_id"] == user_id:
-            user["listening"] = condition
-            return
-
 
 def nick_exists(nickname):
     for user in game_users:
@@ -160,13 +148,18 @@ def play_command(update, context):
 
     if user["active"] == False:
         options.append(['Entrar na fila'])
-        options.append(['Jogar (usuário aleatório)'])
-        options.append(['Jogar (usuário específico)'])
+    else:
+        options.append(['Sair da fila'])
+
+    options.append(['Jogar (usuário aleatório)'])
+    options.append(['Jogar (usuário específico)'])
 
     keyboard = t.ReplyKeyboardMarkup(options, one_time_keyboard=True)
     text = 'Selecione uma opção:'
     update.message.reply_text(text, reply_markup=keyboard)
+
     return 'CHECK_OPTION' 
+
 
 def check_option(update, context):
     user_input = update.message.text 
@@ -178,19 +171,32 @@ def check_option(update, context):
         text = 'Você ainda não está cadastrado! Dê /start para começar'
         return tex.ConversationHandler.END
 
-    if (existing_user["active"] == False and user_input == 'Entrar na fila'):
+    if existing_user["active"] == False and user_input == 'Entrar na fila':
         existing_user["active"] = True
         existing_user["listening"] = True
-        text = 'Você entrou na fila de espera do jogo! '
-        text += 'Aguarde ser chamado para uma partida. '
-        text += 'Se quiser sair da fila, digite "sair".'
+        text = 'Você entrou na fila de espera do jogo! Aguarde ser chamado para uma partida. '
+        context.bot.sendMessage(chat_id=user_id, text=text)
+        text = 'Se quiser sair da fila, vá para o menu do jogo com /play e selecione \'Sair da fila\'.'
         context.bot.sendMessage(chat_id=user_id, text=text)
         return "ROUND"
+    
+    if user_input == 'Sair da fila':
+        return remove_user(update, context)
 
     if user_input == 'Jogar (usuário aleatório)':
+        user = search_user_by_id(game_users, user_id)
+        if user["adversary"] != None:
+            text = f'Você já está presente em uma partida! Finalize-a antes de começar uma nova!'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            return 'ROUND'
         return random_user(update, context)
 
     if user_input == 'Jogar (usuário específico)':
+        user = search_user_by_id(game_users, user_id)
+        if user["adversary"] != None:
+            text = f'Você já está presente em uma partida! Finalize-a antes de começar uma nova!'
+            context.bot.sendMessage(chat_id=user_id, text=text)
+            return 'ROUND'
         text = 'Digite o nickname de seu adversário'
         context.bot.sendMessage(chat_id=user_id, text=text)
         return 'SPECIFIC_USER'
@@ -199,6 +205,7 @@ def check_option(update, context):
     context.bot.sendMessage(chat_id=user_id, text=text)
     return 'CHECK_OPTION'
     
+
 def init_game(update, context, player2):
 
     player1_id = update.effective_user.id
@@ -207,13 +214,11 @@ def init_game(update, context, player2):
 
     player1, player2 = random_start(player1, player2)
 
-    
     text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}, você começa jogando.'
     text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}, você começa esperando.'
     context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
     context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
     
-
     player1["active"] = True
     player1["listening"] = False
     player1["adversary"] = player2["user_id"]
@@ -228,7 +233,6 @@ def init_game(update, context, player2):
     player2["symbol"] = "⭕️"
     player2["key"] = str(player1["user_id"]) + str(player2["user_id"])
 
-
     game = TicTacToe()
     kbd = [
             [IKB(' ', callback_data='0,0'), IKB(' ', callback_data='0,1'), IKB(' ', callback_data='0,2')],
@@ -241,23 +245,17 @@ def init_game(update, context, player2):
         "keyboard": kbd
     }
     
-    
     game.set_symbol(player1["symbol_ascii"], player1["symbol"])
     game.set_symbol(player2["symbol_ascii"], player2["symbol"])
-
     
-    # Mostra a mensagem inicial
-    context.bot.sendMessage(chat_id=player1["user_id"], text="O jogo vai começar!")
-    context.bot.sendMessage(chat_id=player2["user_id"], text="O jogo vai começar!")
-
     # Mostra o teclado do jogo com o símbolo de quem começará a jogar
-    
-    player1["last_message"] =  context.bot.sendMessage(chat_id=player1["user_id"], text=f"Selecione uma posição (seu símbolo é {player1['symbol']})", reply_markup=IKM(kbd))
-    context.bot.sendMessage(chat_id=player2["user_id"], text="Espere sua vez, o outro jogador está selecionando!")
+    textp1 = f"Selecione uma posição (seu símbolo é {player1['symbol']})"
+    player1["last_message"] = context.bot.sendMessage(chat_id=player1["user_id"], text=textp1, reply_markup=IKM(kbd))
     return "ROUND"
 
 
 def random_user(update, context):
+
     player1_id = update.effective_user.id
 
     player2 = get_user_from_list_start(player1_id)
@@ -280,7 +278,6 @@ def specific_user(update, context):
         text = 'Não foi encontrado nenhum usuário com esse apelido!'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
-    
 
     if player2["user_id"] == player1_id:
         text = 'Você não pode jogar consigo mesmo!'
@@ -288,13 +285,17 @@ def specific_user(update, context):
         return tex.ConversationHandler.END
 
     if player2["active"] == False:
-        text = f'{player2["nickname"]} não quer jogar agora.'
+        text = f'{player2["nickname"]} não quer jogar agora!'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+        return tex.ConversationHandler.END
+
+    if player2["adversary"] != None:
+        text = f'{player2["nickname"]} está no meio de uma partida.'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
         
     return init_game(update, context, player2)
     
-
 
 def gameRound(update, context):
     update.callback_query.answer()
@@ -309,6 +310,7 @@ def gameRound(update, context):
     # Recebe as coordenadas do botão pressionado
     data = update.callback_query.data
     x, y = [ int(s) for s in data.split(',') ]
+
     # Caso o botão já tenha sido selecionado, mostrar mensagem de erro
     try:
         result = game["tictactoe"].update_game(x, y, user["symbol_ascii"])
@@ -319,12 +321,25 @@ def gameRound(update, context):
         return 'ROUND'
 
     context.bot.deleteMessage(chat_id=user["user_id"], message_id=user["last_message"].message_id)
-    adversary["last_message"] = context.bot.sendMessage(chat_id=adversary["user_id"], text=f"Selecione uma posição (seu símbolo é {adversary['symbol']})", reply_markup=IKM(game["keyboard"]))
-    context.bot.sendMessage(chat_id=user["user_id"], text="Espere sua vez, o outro jogador está selecionando!")
+    text_adversary = f"Selecione uma posição (seu símbolo é {adversary['symbol']})"
+    adversary["last_message"] = context.bot.sendMessage(chat_id=adversary["user_id"], text=text_adversary, reply_markup=IKM(game["keyboard"]))
 
     if result != None:
-        context.bot.sendMessage(chat_id=user["user_id"], text=result)
-        context.bot.sendMessage(chat_id=adversary["user_id"], text=result)
+        user_text = ''
+        adversary_text = ''
+
+        if result == user["symbol"]:
+            user_text = 'Você venceu!'
+            adversary_text = f'{user["nickname"]} venceu!'
+        elif result == adversary["symbol"]:
+            user_text = f'{adversary["nickname"]} venceu!'
+            adversary_text = 'Você venceu!'
+        else:
+            user_text = adversary_text = 'Deu velha!'
+
+        context.bot.sendMessage(chat_id=user["user_id"], text=user_text)
+        context.bot.sendMessage(chat_id=adversary["user_id"], text=adversary_text)
+
         user["active"] = False
         adversary["active"] = False
         user["listening"] = False
@@ -347,6 +362,7 @@ def gameRound(update, context):
 
     return "ROUND"
     
+
 def remove_user(update, context):
     existingPlayer = search_user_by_id(game_users, update.effective_user.id)
 
@@ -355,12 +371,18 @@ def remove_user(update, context):
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
 
+    if existingPlayer["adversary"] != None:
+        text = 'Você não pode sair no meio de uma partida!'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+        return 'ROUND'
+
     else:
         existingPlayer["active"] = False
         text = 'Para retornar ao menu do jogo, digite /play'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
 
     return tex.ConversationHandler.END
+
 
 updater = tex.Updater(token=TOKEN, use_context=True)
 
@@ -377,9 +399,8 @@ start_handler = tex.ConversationHandler(
 play_handler = tex.ConversationHandler(
     entry_points=[tex.CommandHandler("play", play_command)],
     states={
-        'CHECK_OPTION': [tex.MessageHandler(tex.Filters.text, check_option)],
-        'SPECIFIC_USER': [tex.MessageHandler(tex.Filters.text, specific_user)],
-        #'INIT_GAME': [tex.MessageHandler(tex.Filters.text), init_game)]
+        'CHECK_OPTION': [tex.MessageHandler(tex.Filters.text & ~tex.Filters.command, check_option)],
+        'SPECIFIC_USER': [tex.MessageHandler(tex.Filters.text & ~tex.Filters.command, specific_user)],
         'ROUND': [tex.CallbackQueryHandler(gameRound)]
     },
     fallbacks=[tex.CommandHandler("play", play_command)]
