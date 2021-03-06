@@ -284,6 +284,11 @@ def specific_user(update, context):
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
 
+    if player2["active"] == False:
+        text = f'{player2["nickname"]} não quer jogar agora!'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+        return tex.ConversationHandler.END
+
     if player2["adversary"] != None:
         text = f'{player2["nickname"]} está no meio de uma partida.'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
