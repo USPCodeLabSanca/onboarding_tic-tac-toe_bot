@@ -16,14 +16,13 @@ def random_start(a, b):
     if(random.randint(0,1) == 0):
         return a, b 
     return b, a
-
+  
 
 def set_adversary(user_id, adversary_id):
     for user in game_users:
         if user["user_id"] == user_id:
             user["adversary"] = adversary_id
             return
-
 
 def set_listening(user_id, condition):
     for user in game_users:
@@ -159,12 +158,11 @@ def play_command(update, context):
         options.append(['Entrar na fila'])
         options.append(['Jogar (usuário aleatório)'])
         options.append(['Jogar (usuário específico)'])
-    
+
     keyboard = t.ReplyKeyboardMarkup(options, one_time_keyboard=True)
     text = 'Selecione uma opção:'
     update.message.reply_text(text, reply_markup=keyboard)
     return 'CHECK_OPTION' 
-
 
 def check_option(update, context):
     user_input = update.message.text 
@@ -210,6 +208,7 @@ def random_user(update, context):
         update.message.reply_text(text)
         return tex.ConversationHandler.END
 
+
     player1, player2 = random_start(player1, player2)
 
     text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}, você começa jogando.'
@@ -239,11 +238,12 @@ def specific_user(update, context):
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
     
+
     if player2["user_id"] == player1_id:
         text = 'Você não pode jogar consigo mesmo!'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
-    
+
     if player2["active"] == False:
         text = f'{player2["nickname"]} não quer jogar agora.'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
@@ -256,6 +256,7 @@ def specific_user(update, context):
     context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
     context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
     
+
     player1["active"] = True
     player1["listening"] = False
     player1["adversary"] = player2["user_id"] 
@@ -311,7 +312,6 @@ def CONVERSATION(update, context):
 
     return "CONVERSATION"
     
-
 def remove_user(update, context):
     existingPlayer = search_user_by_id(game_users, update.effective_user.id)
 
@@ -326,7 +326,6 @@ def remove_user(update, context):
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
 
     return tex.ConversationHandler.END
-
 
 updater = tex.Updater(token=TOKEN, use_context=True)
 
