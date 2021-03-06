@@ -3,6 +3,7 @@ import telegram.ext as tex
 import json
 import random
 
+
 TOKEN = '1611542237:AAGPMlkeNxp3geL0urxsSsBncnOBROjctsg' # só pra testar
 
 
@@ -15,13 +16,13 @@ def random_start(a, b):
     if(random.randint(0,1) == 0):
         return a, b 
     return b, a
+  
 
 def set_adversary(user_id, adversary_id):
     for user in game_users:
         if user["user_id"] == user_id:
             user["adversary"] = adversary_id
             return
-
 
 def set_listening(user_id, condition):
     for user in game_users:
@@ -70,36 +71,20 @@ def remove_user_from_queue(user_id):
             game_users.remove(user)
 
 
-def deactivate_user(user_id):
-    for user in game_users:
-        if(user_id == user["user_id"]):
-            #game_users.remove(user)
-            #update_list_json_file()
-            user["active"] = False
-
-
-
-def activate_user(user_id):
-    for user in game_users:
-        if(user_id == user["user_id"]):
-            #game_users.remove(user)
-            #update_list_json_file()
-            user["active"] = True
-
-
 def get_user_from_list_start(skip_user_id):
-  
     for user in game_users:
-        if (user["user_id"] != skip_user_id and user["active"] == True and user["adversary"] == None):
+        if user["user_id"] != skip_user_id and user["active"] == True and user["adversary"] == None:
             game_users.remove(user)
             game_users.append(user)
-            deactivate_user(user["user_id"])
+            user["active"] = False
             return user    
     return None
 
+
 def start(update, context):
     if search_user_by_id(game_users, update.effective_user.id) != None:
-        update.message.reply_text("Você já está presente no jogo! Digite /play para ir para o menu!")
+        update.message.reply_text(
+            "Você já está presente no jogo! Digite /play para ir para o menu!")
         return tex.ConversationHandler.END
     update.message.reply_text("Bem-vindo(a/e)! Escolha um nickname:")
     return "SET_NICK"
@@ -114,11 +99,9 @@ def set_nick(update, context):
         update.message.reply_text("Esse nick já existe, por favor digite outro")
         return "SET_NICK"
 
-
     for user in game_users:
         if my_user_id == user["user_id"]:
             user["nickname"] = my_nick
-            #update_list_json_file()
             update.message.reply_text('Nickname modificado com sucesso!')
             return tex.ConversationHandler.END
 
@@ -132,9 +115,9 @@ def set_nick(update, context):
     }
 
     game_users.append(user_object)
-    #update_list_json_file()
 
-    text = f'Muito bem, {my_nick}. Digite /play para ir para o menu do jogo ou aguarde ser chamado para uma partida'
+    text = f'Muito bem, {my_nick}. '
+    text += 'Digite /play para ir para o menu do jogo ou aguarde ser chamado para uma partida'
     update.message.reply_text(text)
     return tex.ConversationHandler.END
 
@@ -146,102 +129,40 @@ def change_nick(update, context):
     update.message.reply_text("Digite o novo nickname.")
     return "SET_NICK"
 
+
 def users(update, context):
     users = []
-
-   # update.message.reply_text('Atualmente, esses são os outros usuários presentes na fila:')
 
     for user in game_users:
         if(user["active"] == True and user["adversary"] == None and update.effective_user.id != user["user_id"]): 
             users.append(user['nickname'])
 
     if len(users) > 0:
+        update.message.reply_text('Atualmente, esses são os outros usuários presentes na fila:')
         text = "\n".join(users)
     else:
         text = 'Parece que não há ninguém por aqui'
 
-    context.bot.sendMessage(
-        chat_id=update.effective_chat.id, text=text)
+    context.bot.sendMessage(chat_id=update.effective_chat.id, text=text)
 
 
 def play_command(update, context):
     options = []
     user = search_user_by_id(game_users, update.effective_user.id)
+
     if user == None:
         update.message.reply_text('Você não está cadastrado! Digite /start para continuar')
         return tex.ConversationHandler.END
-    elif user["active"] == False:
+
+    if user["active"] == False:
         options.append(['Entrar na fila'])
         options.append(['Jogar (usuário aleatório)'])
         options.append(['Jogar (usuário específico)'])
-    else:
-        options.append(['Sair da fila'])
+
     keyboard = t.ReplyKeyboardMarkup(options, one_time_keyboard=True)
     text = 'Selecione uma opção:'
     update.message.reply_text(text, reply_markup=keyboard)
     return 'CHECK_OPTION' 
-
-def random_user(update, context):
-    player1_id = update.effective_user.id
-    player1 = search_user_by_id(game_users, player1_id)
-    player2 = get_user_from_list_start(update.effective_user.id)
-    text = ''
-    if player2 == None:
-        text = 'Parece que você está sozinho por aqui. Não há usuários disponíveis. '
-        text += 'Compartilhe o bot com os amigos para poder jogar.'
-        update.message.reply_text(text)
-        return tex.ConversationHandler.END
-    else:
-        player1, player2 = random_start(player1, player2)
-        text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}, você começa jogando.'
-        text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}, você começa esperando.'
-        context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
-        context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
-        
-        set_listening(player1["user_id"], False)
-        activate_user(player1["user_id"])
-        set_adversary(player1["user_id"], player2["user_id"])
-        
-        set_listening(player2["user_id"], True)
-        activate_user(player2["user_id"])
-        set_adversary(player2["user_id"], player1["user_id"])
-
-        
-    return "CONVERSATION"
-
-
-
-def specific_user(update, context):
-    player1_id = update.effective_user.id
-    
-    player1 = search_user_by_id(game_users, player1_id)
-    player2 = search_user_in_list_by_nick(update.message.text)
-    
-    if player2 == None:
-        text = 'Não foi encontrado nenhum usuário com esse nome na fila'
-        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
-        return tex.ConversationHandler.END
-    
-    elif player2["user_id"] == player1_id:
-        text = 'Você não pode jogar consigo mesmo!'
-        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
-        return tex.ConversationHandler.END
-    
-    player1, player2 = random_start(player1, player2)
-    text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}, você começa jogando.'
-    text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}, você começa esperando.'
-    context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
-    context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
-    
-    set_listening(player1["user_id"], False)
-    activate_user(player1["user_id"])
-    set_adversary(player1["user_id"], player2["user_id"])
-    
-    set_listening(player2["user_id"], True)
-    activate_user(player2["user_id"])
-    set_adversary(player2["user_id"], player1["user_id"])
-    return "CONVERSATION"
-
 
 def check_option(update, context):
     user_input = update.message.text 
@@ -254,33 +175,143 @@ def check_option(update, context):
         return tex.ConversationHandler.END
 
     if (existing_user["active"] == False and user_input == 'Entrar na fila'):
-        text = 'Entrando na fila...'
+        existing_user["active"] = True
+        existing_user["listening"] = True
+        text = 'Você entrou na fila de espera do jogo! '
+        text += 'Aguarde ser chamado para uma partida. '
+        text += 'Se quiser sair da fila, digite "sair".'
         context.bot.sendMessage(chat_id=user_id, text=text)
-        activate_user(update.effective_user.id)
-        set_listening(existing_user["user_id"], True)
         return "CONVERSATION"
-    else:
-        if user_input == 'Sair da fila':
-            text = 'Saindo da fila...'
-            context.bot.sendMessage(chat_id=user_id, text=text)
+
+    if user_input == 'Jogar (usuário aleatório)':
+        return random_user(update, context)
+
+    if user_input == 'Jogar (usuário específico)':
+        text = 'Digite o nickname de seu adversário'
+        context.bot.sendMessage(chat_id=user_id, text=text)
+        return 'SPECIFIC_USER'
+
+    text = 'Opção inválida!'
+    context.bot.sendMessage(chat_id=user_id, text=text)
+    return 'CHECK_OPTION'
+
+
+def random_user(update, context):
+    player1_id = update.effective_user.id
+
+    player1 = search_user_by_id(game_users, player1_id)
+    player2 = get_user_from_list_start(player1_id)
+
+    if player2 == None:
+        text = 'Parece que você está sozinho por aqui. Não há usuários disponíveis. '
+        text += 'Compartilhe o bot com os amigos para poder jogar.'
+        update.message.reply_text(text)
+        return tex.ConversationHandler.END
+
+
+    player1, player2 = random_start(player1, player2)
+
+    text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}, você começa jogando.'
+    text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}, você começa esperando.'
+    context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
+    context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
+
+    player1["active"] = True
+    player1["listening"] = False
+    player1["adversary"] = player2["user_id"] 
+
+    player2["active"] = True
+    player2["listening"] = True
+    player2["adversary"] = player1["user_id"] 
+
+    return "CONVERSATION"
+
+
+def specific_user(update, context):
+    player1_id = update.effective_user.id
+    
+    player1 = search_user_by_id(game_users, player1_id)
+    player2 = search_user_in_list_by_nick(update.message.text)
+    
+    if player2 == None:
+        text = 'Não foi encontrado nenhum usuário com esse apelido!'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+        return tex.ConversationHandler.END
+    
+
+    if player2["user_id"] == player1_id:
+        text = 'Você não pode jogar consigo mesmo!'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+        return tex.ConversationHandler.END
+
+    if player2["active"] == False:
+        text = f'{player2["nickname"]} não quer jogar agora.'
+        context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+        return tex.ConversationHandler.END
+        
+    player1, player2 = random_start(player1, player2)
+
+    text1 = f'{player1["username"]}, você vai jogar com {player2["username"]}, você começa jogando.'
+    text2 = f'{player2["username"]}, você vai jogar com {player1["username"]}, você começa esperando.'
+    context.bot.sendMessage(chat_id=player1["user_id"], text=text1)
+    context.bot.sendMessage(chat_id=player2["user_id"], text=text2)
+    
+
+    player1["active"] = True
+    player1["listening"] = False
+    player1["adversary"] = player2["user_id"] 
+
+    player2["active"] = True
+    player2["listening"] = True
+    player2["adversary"] = player1["user_id"] 
+
+    return "CONVERSATION"
+
+
+def CONVERSATION(update, context):
+    user_id = update.effective_user.id
+
+    user = search_user_by_id(game_users, user_id)
+    adversary = search_user_by_id(game_users, user["adversary"])
+    
+    text = update.message.text
+
+    if text == "sair":
+        if user["adversary"] == None:
             return remove_user(update, context)
-        elif user_input == 'Jogar (usuário aleatório)':
-            text = 'Você vai jogar com um usuário aleatório'
-            context.bot.sendMessage(chat_id=user_id, text=text)
-            return random_user(update, context)
-        elif user_input == 'Jogar (usuário específico)':
-            text = 'Você vai jogar com um usuário específico'
-            context.bot.sendMessage(chat_id=user_id, text=text)
-            text = 'Digite o nickname de seu adversário'
-            context.bot.sendMessage(chat_id=user_id, text=text)
-            return 'SPECIFIC_USER'
         else:
-            text = 'Opção inválida!'
-            context.bot.sendMessage(chat_id=user_id, text=text)
-            return 'CHECK_OPTION'
-    return tex.ConversationHandler.END
+            update.message.reply_text("Você está no meio de uma partida...")
+            return "CONVERSATION"
 
+    if user["active"] == False:
+        return remove_user(update, context)
 
+    if user["listening"] == True:
+        update.message.reply_text("Você deve esperar pelo adversário")
+        return "CONVERSATION"
+
+    if text == "FIM":
+        adversary["listening"] = False
+        adversary["adversary"] = None
+        adversary["active"] = False
+
+        user["listening"] = False
+        user["adversary"] = None
+        user["active"] = False
+
+        text = "Você deu FIM a partida, para jogar novamente, digite /play."
+        context.bot.sendMessage(chat_id=user["user_id"], text=text)
+        text="Seu adversário deu fim a partida! Digite \"sair\" para sair também."
+        context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
+        return tex.ConversationHandler.END
+
+    context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
+    adversary["listening"] = False
+    update.message.reply_text("Mensagem enviada, espere por uma resposta")
+    user["listening"] = True
+
+    return "CONVERSATION"
+    
 def remove_user(update, context):
     existingPlayer = search_user_by_id(game_users, update.effective_user.id)
 
@@ -288,58 +319,14 @@ def remove_user(update, context):
         text = 'Você não estava cadastrado. Digite /start para continuar'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
         return tex.ConversationHandler.END
+
     else:
-        deactivate_user(existingPlayer["user_id"])
-        text = 'Você saiu do jogo!'
+        existingPlayer["active"] = False
+        text = 'Para retornar ao menu do jogo, digite /play'
         context.bot.sendMessage(chat_id=update.effective_user.id, text=text)
+
     return tex.ConversationHandler.END
 
-
-def CONVERSATION(update, context):
-    id = update.effective_user.id
-    user = search_user_by_id(game_users, id)
-    adversary = search_user_by_id(game_users, user["adversary"])
-    text = update.message.text
-
-    if(text == "sair"):
-        if(user["adversary"] == None):
-            return remove_user(update, context)
-        else:
-            update.message.reply_text("Você está no meio de uma partida...")
-            return "CONVERSATION"
-
-
-    if(user["listening"] == True):
-        update.message.reply_text("Você deve esperar pelo adversário")
-        return "CONVERSATION"
-
-    if(text == "FIM"):
-        set_listening(adversary["user_id"], False)
-        set_adversary(adversary["user_id"], None)
-        deactivate_user(adversary["user_id"])
-        
-        set_listening(user["user_id"], False)
-        set_adversary(user["user_id"], None)
-        deactivate_user(user["user_id"])
-
-        update.message.reply_text("Você deu FIM a partida, para jogar novamente, digite /play.")
-        context.bot.sendMessage(chat_id=adversary["user_id"], text="Seu adversário deu fim a partida, digite \"sair\" para sair também!")
-        return tex.ConversationHandler.END
-
-    
-    context.bot.sendMessage(chat_id=adversary["user_id"], text=text)
-    update.message.reply_text("Mensagem enviada, espere por uma resposta")
-
-    set_listening(user["user_id"], True)
-    set_listening(adversary["user_id"], False)
-
-
-    return "CONVERSATION"
-    
-
-
-
-#updater = tex.Updater('1297400305:AAGjXuYCv00jzjaiCpDQSsl8G6TDLXkx_Cs')
 updater = tex.Updater(token=TOKEN, use_context=True)
 
 dispatcher = updater.dispatcher
@@ -372,10 +359,10 @@ change_nick_handler = tex.ConversationHandler(
 
 users_handler = tex.CommandHandler('users', users)
 
-dispatcher.add_handler(start_handler)
+dispatcher.add_handler(change_nick_handler)
 dispatcher.add_handler(play_handler)
 dispatcher.add_handler(users_handler)
-dispatcher.add_handler(change_nick_handler)
+dispatcher.add_handler(start_handler)
 
 updater.start_polling()
 
